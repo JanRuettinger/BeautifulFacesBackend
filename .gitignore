@@ -1,0 +1,6 @@
+dump.rdb
+.DS_Store
+.env.development
+cache/
+artifacts/
+node_modules
