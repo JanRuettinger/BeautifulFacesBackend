@@ -31,21 +31,80 @@ app.post('/find_match', (req, res) => __awaiter(void 0, void 0, void 0, function
     const walletAddress = req.body.walletAddress;
     const peerID = req.body.peerID;
     const category = req.body.category;
-    console.log(req.body);
     // entry={category: number, peerID: string, walletAddress: string}
+    // delete entries from old categories of the user
+    // go through all entries and delete all entries where walletAddress is the same
+    const keys = yield client.sendCommand(["keys", "*"]);
+    if (keys) {
+        const allCategories = keys.toString().split(",");
+        console.log(allCategories);
+        // console.log(keys?.toString())
+        if (allCategories) {
+            let len = allCategories.length;
+            for (var i = 0; i < len; i++) {
+                const entry = yield client.get(allCategories[i].toString());
+                if (entry) {
+                    const encodedEntry = JSON.parse(entry);
+                    if (encodedEntry.walletAddress == walletAddress) {
+                        yield client.del(allCategories[i].toString());
+                    }
+                }
+            }
+        }
+    }
     // check if there is an entry with category ID = requested category
     const entry = yield client.get(category.toString());
     console.log(entry);
     if (entry) {
         // delete entry
-        yield client.del(category);
-        return res.status(200).json(entry);
+        const encodedEntry = JSON.parse(entry);
+        console.log("encoded entry", entry);
+        // check if the wallet address of the entry is the same as the request wallet address
+        if (encodedEntry.walletAddress == walletAddress) {
+            yield client.set(category.toString(), JSON.stringify({ peerID, walletAddress, category }));
+            return res.status(200).json();
+        }
+        else {
+            yield client.del(category.toString());
+            return res.status(200).json(JSON.parse(entry));
+        }
     }
     else {
         // if entry doesn't exist
         // create entry
-        yield client.set(category, JSON.stringify({ peerID, walletAddress, category }));
+        yield client.set(category.toString(), JSON.stringify({ peerID, walletAddress, category }));
         return res.status(200).json();
+    }
+}));
+app.post('/delete_entries', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const client = (0, redis_1.createClient)({ url: REDIS_URL });
+    client.on('error', (err) => console.log('Redis Client Error', err));
+    yield client.connect();
+    console.log('Redis client connected succesfully.');
+    const walletAddress = req.body.walletAddress;
+    const peerID = req.body.peerID;
+    const category = req.body.category;
+    // entry={category: number, peerID: string, walletAddress: string}
+    // delete entries from old categories of the user
+    // go through all entries and delete all entries where walletAddress is the same
+    const keys = yield client.sendCommand(["keys", "*"]);
+    if (keys) {
+        const allCategories = keys.toString().split(",");
+        console.log(allCategories);
+        // console.log(keys?.toString())
+        if (allCategories) {
+            let len = allCategories.length;
+            for (var i = 0; i < len; i++) {
+                const entry = yield client.get(allCategories[i].toString());
+                if (entry) {
+                    const encodedEntry = JSON.parse(entry);
+                    if (encodedEntry.walletAddress == walletAddress) {
+                        yield client.del(allCategories[i].toString());
+                    }
+                }
+            }
+            res.status(200);
+        }
     }
 }));
 app.get('/alive', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
